@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
+import os 
 
 app = Flask(__name__)
 
@@ -84,7 +85,6 @@ def predict():
     return jsonify({"detections": detections, "bad_rice_detected": bad_rice_detected}), 200
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port, debug=False) # Set debug to False for production
