@@ -46,7 +46,12 @@ def on_starting(server):
             return "127.0.0.1"
     
     server_ip = get_server_ip()
-    port = server.cfg.bind.split(':')[1]
+    # Handle both string and list format for bind
+    bind_address = server.cfg.bind
+    if isinstance(bind_address, list):
+        bind_address = bind_address[0]
+    port = bind_address.split(':')[1]
+    
     print("=" * 60)
     print(f"🚀 ESP-CAM Rice Detection Server Started with Gunicorn!")
     print(f"📡 Server IP: {server_ip}")
