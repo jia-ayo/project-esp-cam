@@ -2,11 +2,36 @@ import io
 import time
 import cv2
 import numpy as np
+import socket
+import os
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
-import os 
 
 app = Flask(__name__)
+
+def get_server_ip():
+    """Get the server's IP address"""
+    try:
+        # Connect to a remote server to get local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def display_server_info(port):
+    """Display server information on startup"""
+    server_ip = get_server_ip()
+    print("=" * 60)
+    print(f"🚀 ESP-CAM Rice Detection Server Started!")
+    print(f"📡 Server IP: {server_ip}")
+    print(f"🔌 Port: {port}")
+    print(f"🌐 Full URL: http://{server_ip}:{port}")
+    print(f"📋 API Endpoint: http://{server_ip}:{port}/predict")
+    print(f"💻 Local URL: http://localhost:{port}/predict")
+    print("=" * 60)
 
 # =========================================================
 # !!! IMPORTANT !!!
@@ -87,4 +112,8 @@ def predict():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(host='0.0.0.0', port=port, debug=False) # Set debug to False for production
+    
+    # Display server information
+    display_server_info(port)
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
