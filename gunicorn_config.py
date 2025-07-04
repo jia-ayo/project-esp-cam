@@ -5,14 +5,14 @@ import os
 bind = f"0.0.0.0:{os.environ.get('PORT', 5000)}"
 backlog = 2048
 
-# Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
+# Worker processes - Reduced for memory efficiency
+workers = 1  # Single worker to avoid memory issues with YOLO model
 worker_class = 'sync'
 worker_connections = 1000
-timeout = 30
+timeout = 120  # Increased timeout for model inference
 keepalive = 2
-max_requests = 1000
-max_requests_jitter = 50
+max_requests = 100  # Reduced to prevent memory leaks
+max_requests_jitter = 10
 
 # Restart workers after this many requests, to help prevent memory leaks
 preload_app = True

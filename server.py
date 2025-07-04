@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import socket
 import os
+import gc
+import torch
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
 
@@ -75,10 +77,22 @@ def predict():
         print(f"Error decoding image: {e}")
         return jsonify({"error": "Invalid image data"}), 400
 
-    # Perform inference
+    # Perform inference with error handling
     inference_start_time = time.time()
-    results = model(img) # Predict on the image
-    inference_end_time = time.time()
+    try:
+        # Clear GPU memory if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        results = model(img) # Predict on the image
+        inference_end_time = time.time()
+    except Exception as e:
+        print(f"Error during model inference: {e}")
+        # Force garbage collection
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return jsonify({"error": "Model inference failed"}), 500
 
     # Process results
     detections = []
@@ -105,6 +119,12 @@ def predict():
     print(f"Total processing time on server: {inference_end_time - reception_start_time:.4f} seconds")
     print(f"Detected {len(detections)} objects. Bad rice detected: {bad_rice_detected}")
     print("-" * 50)
+
+    # Clean up memory
+    del img, results
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # Include the bad_rice_detected flag in the JSON response
     return jsonify({"detections": detections, "bad_rice_detected": bad_rice_detected}), 200
