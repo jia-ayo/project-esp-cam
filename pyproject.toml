@@ -11,11 +11,11 @@ dependencies = [
   "Pillow>=10.0.0",
   "torch>=2.0.0",
   "torchvision>=0.15.0",
-  "gunicorn>=21.0.0"
+  "python-multipart>=0.0.6"
 ]
 
 [project.scripts]
-runserver = "server:main"
+runserver = "runserver:main"  # ✅ CLI tool exposed by pipx
 
 [tool.setuptools]
-py-modules = ["server"]
+py-modules = ["server", "runserver"] 
