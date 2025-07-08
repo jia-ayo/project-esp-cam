@@ -1,24 +1,21 @@
 [project]
-name = "myserverapp"
+name = "project_esp_cam"
 version = "0.1.0"
-description = "Flask-based YOLO image server"
-authors = [{ name = "Ilori" }]
-readme = "README.md"
-requires-python = ">=3.10"
-
+description = "Rice Quality Detection API using YOLO"
+authors = [{name="Ilori"}]
 dependencies = [
-    "Flask>=2.3.0",
-    "ultralytics>=8.0.0",
-    "opencv-python-headless>=4.8.0",
-    "numpy>=1.24.0",
-    "Pillow>=10.0.0",
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-    "gunicorn>=21.0.0",
+  "Flask>=2.3.0",
+  "ultralytics>=8.0.0",
+  "opencv-python-headless>=4.8.0",
+  "numpy>=1.24.0",
+  "Pillow>=10.0.0",
+  "torch>=2.0.0",
+  "torchvision>=0.15.0",
+  "gunicorn>=21.0.0"
 ]
 
 [project.scripts]
-runserver = "server:app"
+runserver = "server:main"
 
 [tool.setuptools]
 py-modules = ["server"]

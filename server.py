@@ -8,84 +8,80 @@ from ultralytics import YOLO
 
 app = Flask(__name__)
 
-# Setup logger
+# 📌 Improved logging format
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load configuration
+# 🔧 Configuration
 MODEL_PATH = 'best.pt'
 BAD_RICE_LABELS = ['Damaged', 'Discolored', 'Broken', 'Chalky', 'Organic Foreign Matters']
 
-# Load YOLO model
+# 🔒 Safe model loading
 try:
-    model_load_start_time = time.time()
+    model_load_start = time.time()
     model = YOLO(MODEL_PATH)
-    model_load_end_time = time.time()
-    print(f"YOLO model '{MODEL_PATH}' loaded successfully in {model_load_end_time - model_load_start_time:.2f} seconds.")
+    load_duration = time.time() - model_load_start
+    print(f"✅ YOLO model loaded in {load_duration:.2f} seconds")
 except Exception as e:
-    print(f"Error loading YOLO model: {e}")
-    print("Please ensure your model path is correct and ultralytics is installed.")
+    print(f"❌ Error loading YOLO model: {e}")
     exit()
 
 @app.route('/')
-def index():
-    return "Welcome to the Rice Quality Detection API! Send a POST request to /predict with an image."
+def home():
+    return "🌾 Rice Quality Detection API – POST an image to /predict"
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'image/jpeg' not in request.content_type:
         return jsonify({"error": "Unsupported Media Type. Expected image/jpeg"}), 415
 
-    reception_start_time = time.time()
-    image_data = request.data
-    reception_end_time = time.time()
+    reception_start = time.time()
+    img_bytes = request.data
+    reception_end = time.time()
 
-    # Decode image
     try:
-        np_array = np.frombuffer(image_data, np.uint8)
-        img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+        np_img = np.frombuffer(img_bytes, np.uint8)
+        img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
         if img is None:
-            raise ValueError("Could not decode image.")
+            raise ValueError("Image decoding failed.")
     except Exception as e:
-        print(f"Error decoding image: {e}")
+        logger.error(f"Image decoding error: {e}")
         return jsonify({"error": "Invalid image data"}), 400
 
-    # Run inference
-    inference_start_time = time.time()
+    infer_start = time.time()
     results = model(img)
-    inference_end_time = time.time()
+    infer_end = time.time()
 
     detections = []
-    bad_rice_detected = False
+    bad_rice_found = False
+
     for r in results:
         boxes = r.boxes.xyxy.cpu().numpy()
-        confidences = r.boxes.conf.cpu().numpy()
-        class_ids = r.boxes.cls.cpu().numpy()
+        scores = r.boxes.conf.cpu().numpy()
+        labels = r.boxes.cls.cpu().numpy()
 
-        for box, conf, cls_id in zip(boxes, confidences, class_ids):
+        for box, score, label_id in zip(boxes, scores, labels):
             x1, y1, x2, y2 = map(int, box)
-            label = model.names[int(cls_id)]
+            label = model.names[int(label_id)]
             detections.append({
                 "box": [x1, y1, x2, y2],
-                "confidence": float(conf),
+                "confidence": float(score),
                 "label": label
             })
             if label in BAD_RICE_LABELS:
-                bad_rice_detected = True
+                bad_rice_found = True
 
-    print(f"Image reception and decoding time: {reception_end_time - reception_start_time:.4f} seconds")
-    print(f"Model inference time: {inference_end_time - inference_start_time:.4f} seconds")
-    print(f"Total processing time: {inference_end_time - reception_start_time:.4f} seconds")
-    print(f"Detected {len(detections)} objects. Bad rice detected: {bad_rice_detected}")
-    print("-" * 50)
+    print(f"📥 Reception & decoding time: {reception_end - reception_start:.4f}s")
+    print(f"🧠 Inference time: {infer_end - infer_start:.4f}s")
+    print(f"⏱️ Total time: {infer_end - reception_start:.4f}s")
+    print(f"🧾 Detections: {len(detections)}, Bad rice: {bad_rice_found}")
 
-    return jsonify({"detections": detections, "bad_rice_detected": bad_rice_detected}), 200
+    return jsonify({
+        "detections": detections,
+        "bad_rice_detected": bad_rice_found
+    }), 200
 
-# ✅ ADDED THIS FUNCTION so pipx can run it as a CLI entry point
+# 🔑 Entry point for pipx CLI
 def main():
     from gunicorn.app.wsgiapp import run
     run()
-
-# ✅ COMMENTED THIS OUT because pipx won't call '__main__' directly
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=5000, debug=True)
