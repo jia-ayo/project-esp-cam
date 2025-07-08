@@ -2,38 +2,14 @@ import io
 import time
 import cv2
 import numpy as np
-import socket
-import os
-import gc
-import torch
+import logging
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
 
 app = Flask(__name__)
 
-def get_server_ip():
-    """Get the server's IP address"""
-    try:
-        # Connect to a remote server to get local IP
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "127.0.0.1"
-
-def display_server_info(port):
-    """Display server information on startup"""
-    server_ip = get_server_ip()
-    print("=" * 60)
-    print(f"🚀 ESP-CAM Rice Detection Server Started!")
-    print(f"📡 Server IP: {server_ip}")
-    print(f"🔌 Port: {port}")
-    print(f"🌐 Full URL: http://{server_ip}:{port}")
-    print(f"📋 API Endpoint: http://{server_ip}:{port}/predict")
-    print(f"💻 Local URL: http://localhost:{port}/predict")
-    print("=" * 60)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # =========================================================
 # !!! IMPORTANT !!!
@@ -58,6 +34,10 @@ except Exception as e:
     print("Please ensure your model path is correct and ultralytics is installed.")
     exit() # Exit if model cannot be loaded
 
+@app.route('/')
+def index():
+    return "Welcome to the Rice Quality Detection API! Send a POST request to /predict with an image."
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'image/jpeg' not in request.content_type:
@@ -77,22 +57,10 @@ def predict():
         print(f"Error decoding image: {e}")
         return jsonify({"error": "Invalid image data"}), 400
 
-    # Perform inference with error handling
+    # Perform inference
     inference_start_time = time.time()
-    try:
-        # Clear GPU memory if available
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        
-        results = model(img) # Predict on the image
-        inference_end_time = time.time()
-    except Exception as e:
-        print(f"Error during model inference: {e}")
-        # Force garbage collection
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        return jsonify({"error": "Model inference failed"}), 500
+    results = model(img) # Predict on the image
+    inference_end_time = time.time()
 
     # Process results
     detections = []
@@ -120,20 +88,8 @@ def predict():
     print(f"Detected {len(detections)} objects. Bad rice detected: {bad_rice_detected}")
     print("-" * 50)
 
-    # Clean up memory
-    del img, results
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
     # Include the bad_rice_detected flag in the JSON response
     return jsonify({"detections": detections, "bad_rice_detected": bad_rice_detected}), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    
-    # Display server information
-    display_server_info(port)
-    
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=5000, debug=True)
