@@ -24,7 +24,8 @@ try:
     print(f"✅ YOLO model '{MODEL_PATH}' loaded in {duration:.2f} seconds.")
 except Exception as e:
     print(f"❌ Failed to load model: {e}")
-    exit()
+    print("Please ensure your model path is correct and ultralytics is installed.")
+    exit() # Exit if model cannot be loaded
 
 # ✅ Home route
 @app.route('/')
@@ -37,20 +38,25 @@ def predict():
     if 'image/jpeg' not in request.content_type:
         return jsonify({"error": "Expected image/jpeg content type"}), 415
 
+    reception_start_time = time.time()
+    image_data = request.data # Get raw image bytes
+    reception_end_time = time.time()
+
+    # Convert image data to OpenCV format
     try:
-        raw = request.data
-        np_img = np.frombuffer(raw, np.uint8)
-        img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+        np_array = np.frombuffer(image_data, np.uint8)
+        img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
         if img is None:
-            raise ValueError("Image decoding failed")
+            raise ValueError("Could not decode image.")
     except Exception as e:
-        logger.error(f"Decoding error: {e}")
-        return jsonify({"error": "Invalid image format"}), 400
+        print(f"Error decoding image: {e}")
+        return jsonify({"error": "Invalid image data"}), 400
 
     # ✅ Run detection
     start = time.time()
     results = model(img)
     duration = time.time() - start
+    end = time.time()
 
     detections = []
     bad_rice = False
@@ -72,4 +78,9 @@ def predict():
                 bad_rice = True
 
     print(f"🧠 Inference time: {duration:.3f}s | Detected: {len(detections)} | Bad rice: {bad_rice}")
+    print(f"Image reception and decoding time: {reception_end_time - reception_start_time:.4f} seconds")
+    print(f"Model inference time: {duration:.4f} seconds")
+    print(f"Total processing time on server: {end - reception_start_time:.4f} seconds")
+    print(f"Detected {len(detections)} objects. Bad rice detected: {bad_rice}")
+    print("-" * 50)
     return jsonify({"detections": detections, "bad_rice_detected": bad_rice}), 200
